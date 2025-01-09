@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Data Fetcher with Analysis</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --text-color: #ffffff;
+            --input-bg: #1e1e1e;
+            --btn-bg: #007bff;
+            --btn-hover: #0056b3;
+            --table-border: #444;
+            --table-bg: #1e1e1e;
+        }
+
+        .light-mode {
+            --bg-color: #f4f4f9;
+            --text-color: #121212;
+            --input-bg: #ffffff;
+            --btn-bg: #007bff;
+            --btn-hover: #0056b3;
+            --table-border: #ddd;
+            --table-bg: #ffffff;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            margin: 50px auto;
+            max-width: 800px;
+            padding: 20px;
+            background: var(--input-bg);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        input, select {
+            width: 80%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid var(--table-border);
+            border-radius: 4px;
+            background: var(--input-bg);
+            color: var(--text-color);
+            transition: background 0.3s, color 0.3s;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            background-color: var(--btn-bg);
+            color: var(--text-color);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: var(--btn-hover);
+        }
+
+        table {
+            margin-top: 20px;
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--table-bg);
+            transition: background 0.3s;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid var(--table-border);
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--input-bg);
+        }
+
+        canvas {
+            margin-top: 20px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>API Data Fetcher with Analysis</h1>
+        <input type="text" id="api-url" placeholder="Enter API URL here"><br>
+        <input type="text" id="api-key" placeholder="Enter API Key (optional)"><br>
+        <button id="fetch-button">Fetch Data</button>
+        <button id="toggle-theme">Switch to Day Mode</button>
+        <button id="download-button" style="display: none;">Download JSON</button>
+
+        <select id="analysis-options">
+            <option value="">Select Analysis Type</option>
+            <option value="table">Show Data Table</option>
+            <option value="bar">Bar Chart</option>
+            <option value="line">Line Chart</option>
+            <option value="pie">Pie Chart</option>
+        </select>
+        <button id="analyze-button">Analyze Data</button>
+
+        <div id="table-container" style="display: none;">
+            <table id="data-table"></table>
+        </div>
+        <canvas id="chartCanvas" width="400" height="400" style="display: none;"></canvas>
+    </div>
+
+    <script>
+        let fetchedData = null;
+
+        // Theme toggle functionality
+        const toggleThemeButton = document.getElementById('toggle-theme');
+        let isLightMode = false;
+
+        toggleThemeButton.addEventListener('click', () => {
+            isLightMode = !isLightMode;
+            document.body.classList.toggle('light-mode', isLightMode);
+            toggleThemeButton.textContent = isLightMode ? 'Switch to Night Mode' : 'Switch to Day Mode';
+        });
+
+        // Fetch data functionality
+        document.getElementById('fetch-button').addEventListener('click', async () => {
+            const apiUrl = document.getElementById('api-url').value;
+            const apiKey = document.getElementById('api-key').value;
+
+            if (!apiUrl) {
+                alert('Please enter an API URL.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/fetch_data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ api_url: apiUrl, api_key: apiKey }),
+                });
+                const data = await response.json();
+
+                if (data.error) {
+                    alert(`Error: ${data.error}`);
+                } else {
+                    fetchedData = data.data;
+                    alert('Data fetched successfully. You can now analyze or download the data.');
+                    document.getElementById('download-button').style.display = 'inline-block';
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        });
+
+        // Analyze data functionality
+        document.getElementById('analyze-button').addEventListener('click', () => {
+            if (!fetchedData) {
+                alert('Please fetch data first.');
+                return;
+            }
+
+            const analysisType = document.getElementById('analysis-options').value;
+            if (!analysisType) {
+                alert('Please select an analysis type.');
+                return;
+            }
+
+            if (analysisType === 'table') {
+                renderTable();
+            } else {
+                renderChart(analysisType);
+            }
+        });
+
+        // Render table
+        function renderTable() {
+            const dataTable = document.getElementById('data-table');
+            const tableContainer = document.getElementById('table-container');
+            tableContainer.style.display = 'block';
+            document.getElementById('chartCanvas').style.display = 'none';
+
+            dataTable.innerHTML = ''; // Clear previous table
+
+            if (Array.isArray(fetchedData)) {
+                const headers = Object.keys(fetchedData[0] || {});
+                const headerRow = document.createElement('tr');
+                headers.forEach(header => {
+                    const th = document.createElement('th');
+                    th.textContent = header;
+                    headerRow.appendChild(th);
+                });
+                dataTable.appendChild(headerRow);
+
+                fetchedData.forEach(row => {
+                    const tr = document.createElement('tr');
+                    headers.forEach(header => {
+                        const td = document.createElement('td');
+                        td.textContent = row[header];
+                        tr.appendChild(td);
+                    });
+                    dataTable.appendChild(tr);
+                });
+            } else if (typeof fetchedData === 'object') {
+                Object.entries(fetchedData).forEach(([key, value]) => {
+                    const tr = document.createElement('tr');
+                    const tdKey = document.createElement('td');
+                    tdKey.textContent = key;
+                    const tdValue = document.createElement('td');
+                    tdValue.textContent = JSON.stringify(value, null, 2);
+                    tr.appendChild(tdKey);
+                    tr.appendChild(tdValue);
+                    dataTable.appendChild(tr);
+                });
+            }
+        }
+
+        // Render chart
+        function renderChart(type) {
+            const ctx = document.getElementById('chartCanvas').getContext('2d');
+            const chartCanvas = document.getElementById('chartCanvas');
+            chartCanvas.style.display = 'block';
+            document.getElementById('table-container').style.display = 'none';
+
+            const labels = Object.keys(fetchedData[0] || {});
+            const values = Object.values(fetchedData[0] || {});
+
+            // Destroy previous chart instance, if any
+            if (window.chartInstance) {
+                window.chartInstance.destroy();
+            }
+
+            // Create a new chart instance
+            window.chartInstance = new Chart(ctx, {
+                type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Data Analysis',
+                        data: values,
+                        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'],
+                        borderColor: '#ffffff',
+                        borderWidth: 1,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                        },
+                    },
+                }
+            });
+        }
+
+        // Download JSON
+        document.getElementById('download-button').addEventListener('click', () => {
+            if (!fetchedData) {
+                alert('Please fetch data first.');
+                return;
+            }
+
+            const blob = new Blob([JSON.stringify(fetchedData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'data.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+    </script>
+</body>
+</html>
