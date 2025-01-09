@@ -89,9 +89,9 @@ print(combined_filters)
 # ax.set_xlabel('States')
 # ax.set_ylabel('Y-axis')
 # ax.set_zlabel('Number of Earners')
-ax.set_xticks(x_pos)
-ax.set_xticklabels(states)
-ax.set_title('3D Visualization of People Earning More Than 1 Crore in FY24')
+# ax.set_xticks(x_pos)
+# ax.set_xticklabels(states)
+# ax.set_title('3D Visualization of People Earning More Than 1 Crore in FY24')
 
-# Show plot
-plt.show()
+# # Show plot
+# plt.show()
